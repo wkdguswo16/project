@@ -5,5 +5,13 @@
     <h3>로그인</h3>
 </div>
 <h6 class="py-3 w-150 mb-4">서비스를 사용하시려면 먼저 로그인을 해주세요.</h4>
-<a href="/login" class="btn btn-primary py-3 w-100 mb-4">구글 계정으로 로그인하기</a>
-{% endblock %}
+    <a href="javascript:void(0);" onclick="loading(this);" class="btn btn-primary py-3 w-100 mb-4">구글 계정으로 로그인하기</a>
+    <script>
+        function loading(obj) {
+            obj.style.backgroundColor = "#009cff70";
+            obj.style.borderColor = "#009cff70";
+            obj.innerHTML = '로그인 중...';
+            location.href = '/login';
+        }
+    </script>
+    {% endblock %}

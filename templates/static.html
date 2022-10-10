@@ -36,7 +36,13 @@
     <script>
         function send(type, str) {
             let result = { 'type': type, 'value': str };
-            window.AppInventor.setWebViewString(JSON.stringify(result));  //변수 str의 값을 웹뷰스트링으로 지정
+            try {
+                window.AppInventor.setWebViewString(JSON.stringify(result));  //변수 str의 값을 웹뷰스트링으로 지정
+            } catch (err) {
+                let msg = $("#alertMessage");
+                msg.addClass('show');
+                msg.css("display", "");
+            }
         }
         function is_app() {
             let v = $('#logout');

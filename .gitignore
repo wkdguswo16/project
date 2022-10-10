@@ -1,3 +1,4 @@
 secret_key.json
 schema.sql
 *.out
+*.pyc

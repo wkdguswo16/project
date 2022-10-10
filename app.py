@@ -1,8 +1,5 @@
 import json
 import os
-import re
-import sqlite3
-
 from flask import Flask, redirect, request, url_for, render_template, session
 from flask_login import (
     LoginManager,
@@ -14,8 +11,7 @@ from flask_login import (
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 
-from modules.db import init_db_command
-from modules.user import User
+from modules.user import User, Department
 
 env = json.load(open('secret_key.json', 'r'))['web']
 DOMAIN, _, DOMAIN_AUTH = env['redirect_uris']
@@ -48,14 +44,14 @@ login_manager.init_app(app)
 
 @login_manager.unauthorized_handler
 def unauthorized():
-    return "You must be logged in to access this content.", 403
+    return render_template("signin.html")
 
 
-try:
-    init_db_command()
-except sqlite3.OperationalError:
-    # Assume it's already been created
-    pass
+# try:
+#     init_db_command()
+# except sqlite3.OperationalError:
+#     # Assume it's already been created
+#     pass
 
 # OAuth2 client setup
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
@@ -63,6 +59,7 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 @login_manager.user_loader
 def load_user(user_id):
+    print(user_id)
     return User.get(user_id)
 
 
@@ -73,11 +70,15 @@ def main():
         return render_template(
             'index.html',
             name=current_user.name,
-            email=current_user.region,
+            email=current_user.get_departure_name(),
             pic=current_user.profile_pic
         )
     return render_template("signin.html")
 
+@app.route('/test')
+@login_required
+def test():
+    return redirect("elements.html")
 
 @app.route('/login')
 def login():
@@ -134,29 +135,33 @@ def callback():
     # We want to make sure their email is verified.
     # The user authenticated with Google, authorized our
     # app, and now we've verified their email through Google!
-    if not userinfo_response.json().get("email_verified"):
+    if userinfo_response.status_code != 200:
+        return redirect("/msg/login_error")
+    
+    userinfo_json = userinfo_response.json()
+    print(userinfo_json)
+    if not userinfo_json.get("email_verified"):
         revoke_token()
         return redirect("/msg/login_error")
 
-    unique_id = userinfo_response.json()["sub"]
-    users_email = userinfo_response.json()["email"]
-    picture = userinfo_response.json()["picture"]
-    users_name = userinfo_response.json()["family_name"]
-    region = userinfo_response.json()["given_name"]
-
+    unique_id = userinfo_json["sub"]
+    users_email = userinfo_json["email"]
     if not users_email.endswith("@gachon.ac.kr"):
         revoke_token()
         return redirect("/msg/email_error")
-    # Create a user in our db with the information provided
-    # by Google
-    user = User(
-        id_=unique_id, name=users_name, region=region, email=users_email, profile_pic=picture
-    )
-
-    # Doesn't exist? Add to database
-    if not User.get(unique_id):
-        User.create(unique_id, users_name, region, users_email, picture)
-
+    user = User.get(unique_id)
+    
+    if not user:
+        picture = userinfo_json["picture"]
+        users_name = userinfo_json["family_name"]
+        region = userinfo_json["given_name"].replace('/', '')
+        dep_id = Department.get_id_by_name(region)
+        # Create a user in our db with the information provided
+        # by Google
+        User.create(unique_id, dep_id, users_name, users_email, picture)
+        user = User(
+            id_=unique_id, dep_id=dep_id, name=users_name, email=users_email, profile_pic=picture
+        )
     # Begin user session by logging the user in
     login_user(user)
     # Send user back to homepage
@@ -169,8 +174,7 @@ def msg(type_id):
         return render_template("message.html", title="오류", message="로그인 중에 오류가 발생하였습니다.")
     elif type_id == 'email_error':
         return render_template("message.html", title="가입 불가", message="해당 이메일은 가천대학교 이메일이 아닙니다.")
-    else:
-        return redirect('/404')
+    # return redirect('/404')
 
 
 @app.route("/logout")
