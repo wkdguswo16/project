@@ -29,7 +29,7 @@ class RDMS(metaclass=ABCMeta):
             f"SELECT * FROM `{destination}` WHERE {param_name} = %s", (
                 identifier, )
         )
-        values = db.fetchone()
+        values = db.fetchall()
         return values
 
     @abstractmethod
@@ -223,7 +223,7 @@ class LockInfo(RDMS):
         commit()
 
     @staticmethod        
-    def delete(token):
+    def delete_by_token(token):
         LockInfo.delete('token', token, LockInfo.DBNAME)
         
     @staticmethod
@@ -250,7 +250,7 @@ class LockUsage(RDMS):
         self.own_id = int(own_id)
         self.stu_id = id_
         self.state = int(state)
-        self.exp_date = None
+        self.exp_date = exp_date
         
     @staticmethod
     def get(token):
@@ -301,7 +301,7 @@ class LockUsage(RDMS):
         commit()
         
     @staticmethod
-    def delete(token):
+    def delete_by_token(token):
         LockUsage.delete('token', token, LockUsage.DBNAME)
     
     @staticmethod
@@ -329,17 +329,17 @@ class LockLog(RDMS):
     def __init__(self, id, token, create_time, is_open):
         self.id = int(id)
         self.token = int(token)
-        self.create_time = None
+        self.create_time = create_time
         self.is_open = int(is_open)
     
     @staticmethod
     def get_by_token(token):
-        locker_log = LockLog.get_all_raw('token', token, LockLog.DBNAME)
+        locker_logs = LockLog.get_all_raw('token', token, LockLog.DBNAME)
         
-        if not locker_log:
+        if not locker_logs:
             return None
         
-        return LockLog(*locker_log)
+        return [LockLog(*log) for log in locker_logs]
     
     @staticmethod
     def create_by_token(token):
@@ -350,9 +350,16 @@ class LockLog(RDMS):
             (token, state),
         )
         commit()
-        
+
     @staticmethod
-    def delete(token):
+    def create():
+        pass
+    @staticmethod
+    def get(token):
+        pass
+
+    @staticmethod
+    def delete_by_token(token):
         LockLog.delete('token', token, LockLog.DBNAME)
     
 class activateFunc(User, Department, LockRegion, LockInfo, LockLog, LockUsage):
@@ -380,23 +387,23 @@ class activateFunc(User, Department, LockRegion, LockInfo, LockLog, LockUsage):
     @staticmethod
     def applyLocker(stu_id):
         db = get_db()
-        dep_id = User.get(stu_id)[1]
-        reg_id = LockRegion.get_by_departure(dep_id)[0][1]
+        dep_id = User.get(stu_id).dep_id
+        reg_id = LockRegion.get_by_departure(dep_id)[0].reg_id
         own_id = LockInfo.get_own_id_by_reg_id(reg_id)
         token = activateFunc.checkToken()
         if (token == None or own_id == None):
             return None
         LockInfo.update_use_by_own_id(own_id)
         LockUsage.create(token, own_id, stu_id)
-        db.commit()
+        commit()
 
 
     @staticmethod
     def cancelLocker(stu_id):
         db = get_db()
         token = LockUsage.get_token_by_stu_id(stu_id)
-        LockLog.delete(token)
+        LockLog.delete_by_token(token)
         own_id = LockUsage.get_own_id_by_token(token)
         LockInfo.update_use_by_own_id(own_id)
-        LockUsage.delete(token)
-        db.commit()
+        LockUsage.delete_by_token(token)
+        commit()
