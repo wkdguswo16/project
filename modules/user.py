@@ -29,17 +29,14 @@ class RDMS(metaclass=ABCMeta):
             f"SELECT * FROM `{destination}` WHERE {param_name} = %s", (
                 identifier, )
         )
+        # values = db.fetchone()
         values = db.fetchall()
         return values
-
+    
     @abstractmethod
     def get(identifier):
         pass
-
-    @abstractmethod
-    def create(self):
-        pass
-
+    
     @staticmethod
     def delete(param_name, identifier, destination):
         db = get_db()
@@ -47,21 +44,28 @@ class RDMS(metaclass=ABCMeta):
             f"DELETE FROM `{destination}` WHERE `{param_name}` = %s",
             (identifier),
         )  
-        db.commit() 
+        db.commit()  
 
 
 class User(UserMixin, RDMS):
     DBNAME = 'student_info'
 
-    def __init__(self, id_, dep_id, name, email, profile_pic):
+    def __init__(self, id_, dep_id, name, email, profile_pic, noti_token=None):
         self.id = id_
         self.dep_id = int(dep_id)
         self.name = name
         self.email = email
         self.profile_pic = profile_pic
+        self.noti_token = noti_token
 
     def __repr__(self):
-        return f"User_{self.id}({self.name}:{self.dep_id}, email={self.email}, pic={self.profile_pic})"
+        return f"User_{self.id}({self.name}:{self.dep_id}, email={self.email}, pic={self.profile_pic}, noti_token={self.noti_token})"
+
+    def set_noti_token(self, token):
+        db = get_db()
+        db.execute(f"UPDATE `{User.DBNAME}` SET `noti_token` = %s WHERE `stu_id` = %s", (token, self.id))
+        commit()
+        self.noti_token = token
 
     @staticmethod
     def get(user_id):
@@ -260,7 +264,7 @@ class LockUsage(RDMS):
         if not usage:
             return None
         return LockUsage(*usage)
-    
+        
     @staticmethod
     def get_token_by_stu_id(stu_id):
         token = LockUsage.get_one_raw(
@@ -321,7 +325,7 @@ class LockUsage(RDMS):
             (state, token),
         )
         commit()
-
+    
     
 class LockLog(RDMS):
     DBNAME = 'locker_log'
@@ -350,14 +354,7 @@ class LockLog(RDMS):
             (token, state),
         )
         commit()
-
-    @staticmethod
-    def create():
-        pass
-    @staticmethod
-    def get(token):
-        pass
-
+        
     @staticmethod
     def delete_by_token(token):
         LockLog.delete('token', token, LockLog.DBNAME)
@@ -396,7 +393,7 @@ class activateFunc(User, Department, LockRegion, LockInfo, LockLog, LockUsage):
         LockInfo.update_use_by_own_id(own_id)
         LockUsage.create(token, own_id, stu_id)
         commit()
-
+    
 
     @staticmethod
     def cancelLocker(stu_id):
