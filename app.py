@@ -1,3 +1,5 @@
+print("import modules...")
+
 import json
 import os
 from flask import Flask, redirect, request, url_for, render_template, session
@@ -10,23 +12,70 @@ from flask_login import (
 )
 from oauthlib.oauth2 import WebApplicationClient
 import requests
-
 from modules.user import User, Department
+import socket
+from time import sleep
+from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import messaging
+from threading import Thread
 
-env = json.load(open('secret_key.json', 'r'))['web']
-DOMAIN, _, DOMAIN_AUTH = env['redirect_uris']
 
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', env['client_id'])
+print("set default parameters...")
+
+cred = credentials.Certificate("scale-363204-firebase-adminsdk-92cgd-94fab70d54.json")
+firebase_admin.initialize_app(cred)
+
+HOST = 'localhost'
+PORT = 5000
+
+env = json.load(open('secret_key.json', 'r'))
+web = env['web']
+DOMAIN, _, DOMAIN_AUTH = web['redirect_uris']
+
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', web['client_id'])
 GOOGLE_CLIENT_SECRET = os.environ.get(
-    'GOOGLE_CLIENT_SECRET', env['client_secret'])
+    'GOOGLE_CLIENT_SECRET', web['client_secret'])
 GOOGLE_DISCOVERY_URL = (
     'https://accounts.google.com/.well-known/openid-configuration'
 )
 
+client = WebApplicationClient(GOOGLE_CLIENT_ID)
+
+def send_notification(target, title, content, image=None):
+
+    message = messaging.Message(
+        notification = messaging.Notification(
+            title=title,
+            body=content,
+            image=image
+        ),
+        token=target,
+    )
+    try:
+        response = messaging.send(message)
+    except Exception as e:
+        print(e)
+        return
+    print('Successfully sent message:', response)
+
+async def socket_send(data):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((HOST, PORT))
+    send = {
+        'identify': 'web',
+        'data': data
+    }
+    try:
+        await client_socket.send(json.dumps(send).encode())
+    except Exception as e:
+        print(e)
+    sleep(0.5);
+    client_socket.close()
 
 def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
-
 
 def revoke_token():
     if session.get("token"):
@@ -34,6 +83,7 @@ def revoke_token():
                             params={'token': session['token']},
                             headers={'content-type': 'application/x-www-form-urlencoded'})
 
+print("server initialization...")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
@@ -41,44 +91,22 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-
 @login_manager.unauthorized_handler
 def unauthorized():
     return render_template("signin.html")
-
-
-# try:
-#     init_db_command()
-# except sqlite3.OperationalError:
-#     # Assume it's already been created
-#     pass
-
-# OAuth2 client setup
-client = WebApplicationClient(GOOGLE_CLIENT_ID)
-
 
 @login_manager.user_loader
 def load_user(user_id):
     print(user_id)
     return User.get(user_id)
 
-
-@app.route('/')
-def main():
-    print(request.user_agent.string)
-    if current_user.is_authenticated:
-        return render_template(
-            'index.html',
-            name=current_user.name,
-            email=current_user.get_departure_name(),
-            pic=current_user.profile_pic
-        )
-    return render_template("signin.html")
-
-@app.route('/test')
+@app.route('/noti', methods=['GET'])
 @login_required
 def test():
-    return redirect("elements.html")
+    token = request.args.get('token')
+    if token != current_user.noti_token:
+        current_user.set_noti_token(token)
+    return 'test'
 
 @app.route('/login')
 def login():
@@ -95,6 +123,11 @@ def login():
     )
     return redirect(request_uri)
 
+@app.route('/add_locker')
+def add_locker():
+    data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+    socket_send(data)
+    return data[0]
 
 @app.route("/login/callback")
 def callback():
@@ -137,7 +170,7 @@ def callback():
     # app, and now we've verified their email through Google!
     if userinfo_response.status_code != 200:
         return redirect("/msg/login_error")
-    
+
     userinfo_json = userinfo_response.json()
     print(userinfo_json)
     if not userinfo_json.get("email_verified"):
@@ -150,7 +183,7 @@ def callback():
         revoke_token()
         return redirect("/msg/email_error")
     user = User.get(unique_id)
-    
+
     if not user:
         picture = userinfo_json["picture"]
         users_name = userinfo_json["family_name"]
@@ -167,15 +200,12 @@ def callback():
     # Send user back to homepage
     return redirect('/')
 
-
 @app.route("/msg/<type_id>")
 def msg(type_id):
     if type_id == 'login_error':
         return render_template("message.html", title="오류", message="로그인 중에 오류가 발생하였습니다.")
     elif type_id == 'email_error':
         return render_template("message.html", title="가입 불가", message="해당 이메일은 가천대학교 이메일이 아닙니다.")
-    # return redirect('/404')
-
 
 @app.route("/logout")
 @login_required
@@ -184,16 +214,54 @@ def logout():
 
     return redirect('/')
 
+@app.route('/')
+def main():
+    print(request.user_agent.string)
+    if current_user.is_authenticated:
+        if token:=current_user.noti_token:
+            thread = Thread(target=send_notification, args=(token, "로그인 성공", "로그인에 성공하였습니다.", current_user.profile_pic))
+            thread.start()
 
-@app.route('/raspage', methods=['GET', 'POST'])
-def rascallback():
-    return 'callback'
+        return render_template(
+            'index.html',
+            name=current_user.name,
+            email=current_user.get_departure_name(),
+            pic=current_user.profile_pic,
+            path="main",
+            notis=[]
+        )
+    return render_template("signin.html")
 
+@app.route('/render/')
+@login_required
+def render_main():
+    return render_template("render/main.html")
+
+@app.route('/render/<path>')
+@login_required
+def render_path(path):
+    try:
+        return render_template(f"render/{path}.html")
+    except Exception as e:
+        print(e)
+    return render_template("render/404.html")
+
+@app.route('/<path>')
+@login_required
+def require_handler(path):
+    return render_template(
+        'index.html',
+        name=current_user.name,
+        email=current_user.get_departure_name(),
+        pic=current_user.profile_pic,
+        path=path,
+        notis=[]
+    )
 
 @app.errorhandler(404)
 def page_not_found(error):
-    return render_template("message.html", title="오류", message="존재하지 않는 페이지입니다.")
+    return render_template("message.html", title="오류", message="존재하지 않는 페이지입니다."), 404
 
 
 if __name__ == '__main__':
-    app.run('0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8000)

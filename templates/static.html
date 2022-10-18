@@ -34,21 +34,53 @@
 
 <body>
     <script>
-        function send(type, str) {
-            let result = { 'type': type, 'value': str };
+        const createAlert = (content, func=null) => {
+            const text = `<div id="alertMessage" class="alert alert-primary alert-dismissible fade show" role="alert">
+                <i class="fa fa-exclamation-circle me-2"></i>${content}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+            let msgArea = document.getElementById("alertSection");
+            msgArea.innerHTML = text;
+            msgArea.onclick = func;
+        }
+        const send = (type, str) => {
+            let result = { type: type, value: str };
             try {
-                window.AppInventor.setWebViewString(JSON.stringify(result));  //변수 str의 값을 웹뷰스트링으로 지정
+              JavaScriptChannel.postMessage(JSON.stringify(result)); //변수 str의 값을 웹뷰스트링으로 지정
             } catch (err) {
-                let msg = $("#alertMessage");
-                msg.addClass('show');
-                msg.css("display", "");
+              createAlert("애플리케이션 사용을 권장합니다.");
             }
-        }
-        function is_app() {
-            let v = $('#logout');
-            v.html("세션 초기화");
-            return v.html();
-        }
+          };
+          const send_to_web = async (str) => {
+            console.log(str);
+            fetch("/noti?token=" + str)
+              .then((response) => {
+                return response.json();
+              })
+              .then((myJson) => {
+                console.log(JSON.stringify(myJson));
+              });
+          };
+    
+          const csr_render = async (render_html) => {
+            let app = document.getElementById("app");
+            console.log("render function active");
+            let result = await fetch(
+              "/render/" + render_html.substr(render_html.indexOf("/") + 1)
+            )
+              .then((response) => {
+                console.log("render responsed");
+                return response.text();
+              })
+              .then((value) => {
+                console.log("render update");
+                app.innerHTML = value;
+              })
+              .then(() => {
+                console.log("acvite reload");
+                reload($);
+              });
+            // app.innerHTML = render_html;
+          };
     </script>
     {% block static %}
     {% endblock %}

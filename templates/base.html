@@ -14,7 +14,7 @@
     <!-- Sidebar Start -->
     <div class="sidebar pe-4 pb-3">
         <nav class="navbar bg-light navbar-light">
-            <a href="/" class="navbar-brand mx-4 mb-3">
+            <a onclick="csr_render('main');" class="navbar-brand mx-4 mb-3">
                 <h3 class="text-primary"><i class="fa fa-hashtag me-2"></i>Scale 사물함</h3>
             </a>
             <div class="d-flex align-items-center ms-4 mb-4">
@@ -30,30 +30,10 @@
                 </div>
             </div>
             <div class="navbar-nav w-100">
-                <a href="/" class="nav-item nav-link"><i class="fa fa-tachometer-alt me-2"></i>대시보드</a>
-                <div class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><i
-                            class="fa fa-laptop me-2"></i>Elements</a>
-                    <div class="dropdown-menu bg-transparent border-0">
-                        <a href="button.html" class="dropdown-item">Buttons</a>
-                        <a href="typography.html" class="dropdown-item">Typography</a>
-                        <a href="element.html" class="dropdown-item">Other Elements</a>
-                    </div>
-                </div>
-                <a href="widget.html" class="nav-item nav-link"><i class="fa fa-th me-2"></i>Widgets</a>
-                <a href="form.html" class="nav-item nav-link"><i class="fa fa-keyboard me-2"></i>Forms</a>
-                <a href="table.html" class="nav-item nav-link"><i class="fa fa-table me-2"></i>Tables</a>
-                <a href="chart.html" class="nav-item nav-link"><i class="fa fa-chart-bar me-2"></i>Charts</a>
-                <div class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle active" data-bs-toggle="dropdown"><i
-                            class="far fa-file-alt me-2"></i>Pages</a>
-                    <div class="dropdown-menu bg-transparent border-0">
-                        <a href="signin.html" class="dropdown-item">Sign In</a>
-                        <a href="signup.html" class="dropdown-item">Sign Up</a>
-                        <a href="404.html" class="dropdown-item">404 Error</a>
-                        <a href="blank.html" class="dropdown-item active">Blank Page</a>
-                    </div>
-                </div>
+                <a href="/" class="render nav-item nav-link"><i class="fa fa-tachometer-alt me-2"></i>대시보드</a>
+                <a href="log" class="render nav-item nav-link"><i class="fa fa-th me-2"></i>로그</a>
+                <a href="info" class="render nav-item nav-link"><i class="fa fa-table me-2"></i>사물함 정보</a>
+                <a href="detail" class="render nav-item nav-link"><i class="fa fa-chart-bar me-2"></i>이용 통계</a>
             </div>
         </nav>
     </div>
@@ -67,55 +47,47 @@
             <a href="/" class="navbar-brand d-flex d-lg-none me-4">
                 <h2 class="text-primary mb-0">사물함</h2>
             </a>
-            <a href="#" class="sidebar-toggler flex-shrink-0">
+            <a class="sidebar-toggler flex-shrink-0">
                 <i class="fa fa-bars"></i>
             </a>
-            <div class="d-none d-md-flex ms-4">
-                <span class="d-none d-lg-inline-flex">사용중인 사물함: 없음</span>
-            </div>
             <div class="navbar-nav align-items-center ms-auto">
                 <div class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                         <i class="fa fa-bell me-lg-2"></i>
                         <span class="d-none d-lg-inline-flex">알림</span>
                     </a>
-                    <div class="dropdown-menu dropdown-menu-end bg-light border-0 rounded-0 rounded-bottom m-0">
-                        <a href="#" class="dropdown-item">
-                            <h6 class="fw-normal mb-0">Profile updated</h6>
-                            <small>15 minutes ago</small>
+                    <div class="dropdown-menu dropdown-menu-end bg-light border-0 rounded-0 rounded-bottom m-0"
+                        id="notifications">
+                        {% if notis %}
+                        {% for param in notis %}
+                        <a class="dropdown-item" onclick="csr_render('log');">
+                            <h6 class="fw-normal mb-0">{{ param['title'] }}</h6>
+                            <small>{{ param['content'] }}</small>
                         </a>
-                        <hr class="dropdown-divider">
-                        <a href="#" class="dropdown-item">
-                            <h6 class="fw-normal mb-0">New user added</h6>
-                            <small>15 minutes ago</small>
+                        {% endfor %}
+                        {% else %}
+                        <a class="dropdown-item" onclick="null">
+                            <h6 class="fw-normal mb-0">아무것도 없습니다...</h6>
                         </a>
-                        <hr class="dropdown-divider">
-                        <a href="#" class="dropdown-item">
-                            <h6 class="fw-normal mb-0">Password changed</h6>
-                            <small>15 minutes ago</small>
-                        </a>
-                        <hr class="dropdown-divider">
-                        <a href="#" class="dropdown-item text-center">See all notifications</a>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                         <img class="rounded-circle me-lg-2" src="{{ pic }}" alt="" style="width: 40px; height: 40px;">
                         <span class="d-none d-lg-inline-flex">{{ name }}</span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end bg-light border-0 rounded-0 rounded-bottom m-0">
-                        <a href="#" class="dropdown-item">내 이용정보</a>
-                        <a href="#" class="dropdown-item" onclick="send('msg', '하이브리드 앱 뷰 테스트입니다.');">설정</a>
-                        <a href="/logout" class="dropdown-item" id='logout' onclick="send('state', 'clear_cookie');">로그아웃</a>
+                        <a href="/info" class="render dropdown-item">내 이용정보</a>
+                        <a class="dropdown-item" onclick="send('msg', '하이브리드 앱 뷰 테스트입니다.');">설정</a>
+                        <a href="/logout" class="dropdown-item" id='logout'
+                            onclick="send('state', 'clear_cookie');">로그아웃</a>
                     </div>
                 </div>
             </div>
         </nav>
         <!-- Navbar End -->
-        <div id="alertMessage" class="alert alert-primary alert-dismissible fade" style="display: none;" role="alert">
-            <i class="fa fa-exclamation-circle me-2"></i>애플리케이션 사용을 권장합니다.
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+        <div id="alertSection"></div>
 
         <!-- Blank Start -->
         {% block content %}
@@ -128,7 +100,7 @@
             <div class="bg-light rounded-top p-4">
                 <div class="row">
                     <div class="col-12 col-sm-6 text-center text-sm-start">
-                        &copy; <a href="#">Your Site Name</a>, All Right Reserved.
+                        &copy; <a>Lock Scale</a>, All Right Reserved.
                     </div>
                     <div class="col-12 col-sm-6 text-center text-sm-end">
                         <!--/*** This template is free as long as you keep the footer author’s credit link/attribution link/backlink. If you'd like to use the template without the footer author’s credit link/attribution link/backlink, you can purchase the Credit Removal License from "https://htmlcodex.com/credit-removal". Thank you for your support. ***/-->
@@ -143,7 +115,7 @@
 
 
     <!-- Back to Top -->
-    <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top"><i class="bi bi-arrow-up"></i></a>
+    <a class="btn btn-lg btn-primary btn-lg-square back-to-top"><i class="bi bi-arrow-up"></i></a>
 </div>
 
 {% endblock %}

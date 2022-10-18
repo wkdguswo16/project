@@ -1,4 +1,5 @@
 /********** Template CSS **********/
+
 :root {
     --primary: #009CFF;
     --light: #F3F6F9;
@@ -15,6 +16,7 @@
 
 
 /*** Spinner ***/
+
 #spinner {
     opacity: 0;
     visibility: hidden;
@@ -30,6 +32,7 @@
 
 
 /*** Button ***/
+
 .btn {
     transition: .5s;
 }
@@ -66,6 +69,7 @@
 
 
 /*** Layout ***/
+
 .sidebar {
     position: fixed;
     top: 0;
@@ -90,15 +94,12 @@
     .sidebar {
         margin-left: 0;
     }
-
     .sidebar.open {
         margin-left: -250px;
     }
-
     .content {
         width: calc(100% - 250px);
     }
-
     .content.open {
         width: 100%;
         margin-left: 0;
@@ -109,11 +110,9 @@
     .sidebar {
         margin-left: -250px;
     }
-
     .sidebar.open {
         margin-left: 0;
     }
-
     .content {
         width: 100%;
         margin-left: 0;
@@ -122,6 +121,7 @@
 
 
 /*** Navbar ***/
+
 .sidebar .navbar .navbar-nav .nav-link {
     padding: 7px 20px;
     color: var(--dark);
@@ -218,6 +218,7 @@
 
 
 /*** Date Picker ***/
+
 .bootstrap-datetimepicker-widget.bottom {
     top: auto !important;
 }
@@ -246,6 +247,7 @@
 
 
 /*** Testimonial ***/
+
 .progress .progress-bar {
     width: 0px;
     transition: 2s;
@@ -253,6 +255,7 @@
 
 
 /*** Testimonial ***/
+
 .testimonial-carousel .owl-dots {
     margin-top: 24px;
     display: flex;
@@ -274,4 +277,59 @@
 .testimonial-carousel .owl-dot.active {
     background: var(--dark);
     border-color: var(--primary);
+}
+
+.empty-component {
+    height: 20px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #00000024, #00000052, #00000024);
+    background-size: 200% 100%;
+    margin-top: 10px;
+    -webkit-animation: Animation 2s ease infinite;
+    -moz-animation: Animation 2s ease infinite;
+    animation: Animation 2s ease infinite;
+}
+
+.empty-component.short {
+    width: 30%;
+}
+
+.empty-component.long {
+    width: 90%;
+}
+
+@-webkit-keyframes Animation {
+    0% {
+        background-position: 10% 0%;
+    }
+    50% {
+        background-position: 90% 0%;
+    }
+    100% {
+        background-position: 10% 0%;
+    }
+}
+
+@-moz-keyframes Animation {
+    0% {
+        background-position: 10% 0%;
+    }
+    50% {
+        background-position: 90% 0%;
+    }
+    100% {
+        background-position: 10% 0%;
+    }
+}
+
+@keyframes Animation {
+    0% {
+        background-position: 10% 0%;
+    }
+    50% {
+        background-position: 90% 0%;
+    }
+    100% {
+        background-position: 10% 0%;
+    }
 }
