@@ -1,4 +1,4 @@
-secret_key.json
+*.json
 schema.sql
 *.out
 *.pyc
