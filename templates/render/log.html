@@ -1,0 +1,31 @@
+<!-- 사물함 이용 기록 조회페이지 -->
+<div class="container-fluid pt-4 px-4">
+    <div class="h-100 bg-light rounded p-5">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0">사물함 기록</h6>
+            <a class="btn btn-lg btn-success m-2 render" href="/">돌아가기</a>
+
+        </div>
+
+        {% for log in logs %}
+        <div class="d-flex align-items-center border-bottom py-3">
+            {% if log['is_open'] %}
+            <i class="bi bi-door-open fa-2x"></i>
+            {% else %}
+            <i class="bi bi-door-closed fa-2x"></i>
+            {% endif %}
+            <div class="w-100 ms-3">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-0">사물함</h6>
+                    <small>{{ log['time'] }}</small>
+                </div>
+                {% if log['is_open'] %}
+                <span>열림</span>
+                {% else %}
+                <span>닫힘</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>

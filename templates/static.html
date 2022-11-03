@@ -2,102 +2,116 @@
 <html lang="ko">
 
 <head>
-    <meta charset="utf-8">
-    <title>사물함</title>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta content="" name="keywords">
-    <meta content="" name="description">
+  <meta charset="utf-8">
+  <title>사물함</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <meta content="" name="keywords">
+  <meta content="" name="description">
 
-    <!-- Favicon -->
-    <link href="{{ url_for('static', filename='img/favicon.ico') }}" rel="icon">
+  <!-- Favicon -->
+  <link href="{{ url_for('static', filename='img/favicon.ico') }}" rel="icon">
 
-    <!-- Google Web Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Google Web Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Icon Font Stylesheet -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Icon Font Stylesheet -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- Libraries Stylesheet -->
-    <link href="{{ url_for('static', filename='lib/owlcarousel/assets/owl.carousel.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='lib/tempusdominus/css/tempusdominus-bootstrap-4.min.css') }}"
-        rel="stylesheet" />
+  <!-- Libraries Stylesheet -->
+  <link href="{{ url_for('static', filename='lib/owlcarousel/assets/owl.carousel.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='lib/tempusdominus/css/tempusdominus-bootstrap-4.min.css') }}"
+    rel="stylesheet" />
 
-    <!-- Customized Bootstrap Stylesheet -->
-    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+  <!-- Customized Bootstrap Stylesheet -->
+  <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
 
-    <!-- Template Stylesheet -->
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <!-- Template Stylesheet -->
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 
 <body>
-    <script>
-        const createAlert = (content, func=null) => {
-            const text = `<div id="alertMessage" class="alert alert-primary alert-dismissible fade show" role="alert">
+  <script>
+    const createAlert = (content, func = null) => {
+      const text = `<div id="alertMessage" class="alert alert-primary alert-dismissible fade show" role="alert">
                 <i class="fa fa-exclamation-circle me-2"></i>${content}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-            let msgArea = document.getElementById("alertSection");
-            msgArea.innerHTML = text;
-            msgArea.onclick = func;
+      let msgArea = document.getElementById("alertSection");
+      msgArea.innerHTML = text;
+      msgArea.onclick = func;
+    }
+    const send = (type, str) => {
+      let result = { type: type, value: str };
+      console.log(result);
+      try {
+        JavaScriptChannel.postMessage(JSON.stringify(result)); //변수 str의 값을 웹뷰스트링으로 지정
+      } catch (err) {
+        createAlert("애플리케이션 사용을 권장합니다.");
+      }
+    };
+    const doorOpen = async => {
+      fetch('/open')
+      .then((response)=> {
+        reload($);
+      })
+    }
+    const send_to_web = async (str) => {
+      console.log(str);
+      fetch("/noti?token=" + str)
+        .then((response) => {
+          return response.json();
+        })
+        .then((myJson) => {
+          send("uuid", myJson['uuid']);
+        });
+    };
+
+    const csr_render = async (render_html, post = {}) => {
+      let app = document.getElementById("app");
+      console.log("render function active");
+      let result = await fetch(
+        "/render/" + render_html.substr(render_html.indexOf("/") + 1)
+        , {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(post),
         }
-        const send = (type, str) => {
-            let result = { type: type, value: str };
-            try {
-              JavaScriptChannel.postMessage(JSON.stringify(result)); //변수 str의 값을 웹뷰스트링으로 지정
-            } catch (err) {
-              createAlert("애플리케이션 사용을 권장합니다.");
-            }
-          };
-          const send_to_web = async (str) => {
-            console.log(str);
-            fetch("/noti?token=" + str)
-              .then((response) => {
-                return response.json();
-              })
-              .then((myJson) => {
-                console.log(JSON.stringify(myJson));
-              });
-          };
-    
-          const csr_render = async (render_html) => {
-            let app = document.getElementById("app");
-            console.log("render function active");
-            let result = await fetch(
-              "/render/" + render_html.substr(render_html.indexOf("/") + 1)
-            )
-              .then((response) => {
-                console.log("render responsed");
-                return response.text();
-              })
-              .then((value) => {
-                console.log("render update");
-                app.innerHTML = value;
-              })
-              .then(() => {
-                console.log("acvite reload");
-                reload($);
-              });
-            // app.innerHTML = render_html;
-          };
-    </script>
-    {% block static %}
-    {% endblock %}
+      )
+        .then((response) => {
+          console.log("render responsed");
+          return response.text();
+        })
+        .then((value) => {
+          console.log("render update");
+          app.innerHTML = value;
+        })
+        .then(() => {
+          console.log("acvite reload");
+          reload($);
+        });
+      // app.innerHTML = render_html;
+    };
+  </script>
+  {% block static %}
+  {% endblock %}
 
-    <!-- JavaScript Libraries -->
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='lib/chart/chart.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='lib/easing/easing.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='lib/waypoints/waypoints.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='lib/owlcarousel/owl.carousel.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='lib/tempusdominus/js/moment.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='lib/tempusdominus/js/moment-timezone.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js') }}"></script>
+  <!-- JavaScript Libraries -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='lib/chart/chart.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/easing/easing.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/waypoints/waypoints.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/owlcarousel/owl.carousel.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/tempusdominus/js/moment.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/tempusdominus/js/moment-timezone.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js') }}"></script>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <!-- Template Javascript -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <!-- Template Javascript -->
 </body>
 
 </html>

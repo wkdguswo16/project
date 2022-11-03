@@ -1,9 +1,10 @@
-const navigate = (to, isReplace = false) => {
+const navigate = (to, isReplace = false, data = {}) => {
     console.log(`navigate: ${to}: ${isReplace}`);
     const historyChangeEvent = new CustomEvent("historychange", {
         detail: {
             to,
             isReplace,
+            data
         },
     });
 
@@ -21,8 +22,11 @@ const reload = ($) => {
             if (!(target instanceof HTMLAnchorElement)) return;
 
             e.preventDefault();
-            const targetURL = e.target.pathname;
-            navigate(targetURL);
+            const targetURL = target.pathname;
+            const targetInfo = {data:target.name};
+            console.log(target);
+            console.log(targetInfo);
+            navigate(targetURL, false, targetInfo);
         });
 
     // Spinner
@@ -71,19 +75,19 @@ $(document).ready(() => {
     }).on("historychange", ({ detail }) => {
         console.log("history change");
         console.log(detail);
-        const { to, isReplace } = detail;
+        const { to, isReplace, data } = detail;
         let nowUrl = location.pathname
         if (isReplace || to === nowUrl)
             history.replaceState(true, "", to);
         else history.pushState(false, "", to);
-
-        csr_render(to);
+        console.log(data);
+        csr_render(to, data);
 
     }).on("popstate", (event) => {
         console.log(`state pop:`);
         console.log(event);
         let previousUrl = location.pathname;
-        csr_render(previousUrl);
+        csr_render(previousUrl, data);
 
     })
 

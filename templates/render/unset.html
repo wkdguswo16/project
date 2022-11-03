@@ -1,0 +1,17 @@
+<!-- 사물함 신청 취소 페이지 -->
+<div class="container-fluid pt-4 px-4">
+    <div class="row vh-100 bg-light rounded align-items-center justify-content-center mx-0">
+        <div class="col-md-6 text-center">
+            <div class="container-fluid pt-4 px-4">
+                <div class="bg-light text-center rounded p-4">
+                    <i class="bi bi-door-closed fa-10x"></i>
+                    <h4>사물함 {{pos}}</h4>
+                </div>
+                <hr class="divider" />
+            </div>
+            <h3>정말로 해지하시겠습니까?</h3>
+            <a class="btn btn-lg btn-success m-2 render" href="/">돌아가기</a>
+            <a class="btn btn-lg btn-danger m-2 render" href="/" name="removeLocker_{{ params['data'] }}">취소하기</a>
+        </div>
+    </div>
+</div>

@@ -14,7 +14,7 @@
     <!-- Sidebar Start -->
     <div class="sidebar pe-4 pb-3">
         <nav class="navbar bg-light navbar-light">
-            <a onclick="csr_render('main');" class="navbar-brand mx-4 mb-3">
+            <a href="/" class="navbar-brand mx-4 mb-3">
                 <h3 class="text-primary"><i class="fa fa-hashtag me-2"></i>Scale 사물함</h3>
             </a>
             <div class="d-flex align-items-center ms-4 mb-4">
@@ -56,11 +56,11 @@
                         <i class="fa fa-bell me-lg-2"></i>
                         <span class="d-none d-lg-inline-flex">알림</span>
                     </a>
-                    <div class="dropdown-menu dropdown-menu-end bg-light border-0 rounded-0 rounded-bottom m-0"
+                    <div class="dropdown-menu dropdown-menu-end bg-light border rounded-bottom m-0"
                         id="notifications">
                         {% if notis %}
                         {% for param in notis %}
-                        <a class="dropdown-item" onclick="csr_render('log');">
+                        <a class="dropdown-item" href="log">
                             <h6 class="fw-normal mb-0">{{ param['title'] }}</h6>
                             <small>{{ param['content'] }}</small>
                         </a>
@@ -77,7 +77,7 @@
                         <img class="rounded-circle me-lg-2" src="{{ pic }}" alt="" style="width: 40px; height: 40px;">
                         <span class="d-none d-lg-inline-flex">{{ name }}</span>
                     </a>
-                    <div class="dropdown-menu dropdown-menu-end bg-light border-0 rounded-0 rounded-bottom m-0">
+                    <div class="dropdown-menu dropdown-menu-end bg-light border rounded-bottom m-0">
                         <a href="/info" class="render dropdown-item">내 이용정보</a>
                         <a class="dropdown-item" onclick="send('msg', '하이브리드 앱 뷰 테스트입니다.');">설정</a>
                         <a href="/logout" class="dropdown-item" id='logout'
@@ -97,7 +97,7 @@
 
         <!-- Footer Start -->
         <div class="container-fluid pt-4 px-4">
-            <div class="bg-light rounded-top p-4">
+            <div class="bg-light rounded p-4">
                 <div class="row">
                     <div class="col-12 col-sm-6 text-center text-sm-start">
                         &copy; <a>Lock Scale</a>, All Right Reserved.

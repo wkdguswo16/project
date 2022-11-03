@@ -1,0 +1,33 @@
+<!-- 사물함 신청 현황 -->
+<div class="container-fluid pt-4 px-4">
+  <div class="bg-light text-center rounded p-5">
+    <i class="bi bi-exclamation-square fa-5x"></i><br />
+    <h4 class="text-black-50">등록된 사물함 없음</h4>
+    <a class="render btn btn-primary ms-2" href="/add_locker">추가하기</a>
+  </div>
+</div>
+<!-- 사물함 신청 현황 끝-->
+
+<!-- 사물함 신청 버튼 -->
+<!-- 사물함 신청 버튼 끝 -->
+
+<!-- Widgets Start -->
+<div class="container-fluid pt-4 px-4">
+  <div class="h-100 bg-light rounded p-5">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h6 class="mb-0">신청 가능한 사물함</h6>
+      <a href="">모두 보기</a>
+    </div>
+    {% for locker in lockers %}
+    <a class="render d-flex align-items-center border-bottom py-3" href="/add_locker" name="{{ locker['own_id'] }}">
+      <div class="w-100 ms-3">
+        <div class="d-flex w-100 justify-content-between">
+          <h6 class="mb-0">사물함 - {{ locker['name'] }}</h6>
+          <small>사용 가능</small>
+        </div>
+        <span>{{ locker['place'] }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>

@@ -48,7 +48,5 @@ if not args.noPull:
 if not args.kill:
     os.system(
         f"nohup python3 -u {os.path.expanduser('~')}/project/app.py &")
-    os.system(
-        f"nohup python3 -u {os.path.expanduser('~')}/project/sock.py > socket.out &")
 if args.console:
-    os.system(f"tail -f {os.path.expanduser('~')}/project/nohup.out")
+    os.system(f"tail -n 0 -f {os.path.expanduser('~')}/project/nohup.out")

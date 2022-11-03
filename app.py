@@ -1,8 +1,6 @@
-print("import modules...")
-
 import json
 import os
-from flask import Flask, redirect, request, url_for, render_template, session
+from flask import Flask, redirect, request, url_for, render_template, session, current_app
 from flask_login import (
     LoginManager,
     current_user,
@@ -12,41 +10,87 @@ from flask_login import (
 )
 from oauthlib.oauth2 import WebApplicationClient
 import requests
-from modules.user import User, Department
-import socket
-from time import sleep
-from datetime import datetime
+from modules.user import *
+from modules.redis_handler import RedisHandler
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import messaging
 from threading import Thread
+from modules.token import gen_token
+print("import modules...")
 
 
 print("set default parameters...")
 
-cred = credentials.Certificate("scale-363204-firebase-adminsdk-92cgd-94fab70d54.json")
+cred = credentials.Certificate(
+    "scale-363204-firebase-adminsdk-92cgd-94fab70d54.json")
 firebase_admin.initialize_app(cred)
 
-HOST = 'localhost'
-PORT = 5000
-
 env = json.load(open('secret_key.json', 'r'))
-web = env['web']
-DOMAIN, _, DOMAIN_AUTH = web['redirect_uris']
+env_web = env['web']
+env_redis = env['redis']
+DOMAIN, _, DOMAIN_AUTH = env_web['redirect_uris']
 
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', web['client_id'])
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', env_web['client_id'])
 GOOGLE_CLIENT_SECRET = os.environ.get(
-    'GOOGLE_CLIENT_SECRET', web['client_secret'])
+    'GOOGLE_CLIENT_SECRET', env_web['client_secret'])
 GOOGLE_DISCOVERY_URL = (
     'https://accounts.google.com/.well-known/openid-configuration'
 )
 
+
+rs_server = RedisHandler(
+    env_redis['host'], env_redis['port'], db=0, password=env_redis['password'])
+
+
+def open_via_raspberry(lock_info: LockInfo):
+    res = json.dumps({"target": lock_info.own_id, "action": "open"})
+    rs_server.publish(lock_info.reg_id, res)
+
+
+def enable_usage(lock_info: LockInfo):
+    token = gen_token()
+    LockUsage.create(token, lock_info, current_user)
+    usage = LockUsage.get(token)
+    res = json.dumps({"target": lock_info.own_id, "action": "aes:"+usage.uuid})
+    rs_server.publish(lock_info.reg_id, res)
+
+
+def disable_usage(usage: LockUsage):
+    lock_info = usage.get_locker_info()
+    res = json.dumps({"target": lock_info.own_id, "action": "purge"})
+    rs_server.publish(lock_info.reg_id, res)
+    usage.disable()
+
+
+def redis_handle(channel: str, data):
+    data = json.loads(data)
+    print(data)
+    if state := data.get("door_state"):
+        state = int(state)
+        title = "문 {0}"
+        content = "문이 {0}습니다."
+        if state == LockLog.OPENED:
+            title = title.format("열림")
+            content = content.format("열렸")
+        elif state == LockLog.CLOSED:
+            title = title.format("닫힘")
+            content = content.format("닫혔")
+        elif state == LockLog.INVALID_OPEN:
+            title = title.format("경고")
+            content = content.format("강제적으로 열렸")
+        else:
+            return
+        send_notification(data['noti_token'], title, content)
+
+
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
+
 
 def send_notification(target, title, content, image=None):
 
     message = messaging.Message(
-        notification = messaging.Notification(
+        notification=messaging.Notification(
             title=title,
             body=content,
             image=image
@@ -60,28 +104,17 @@ def send_notification(target, title, content, image=None):
         return
     print('Successfully sent message:', response)
 
-async def socket_send(data):
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((HOST, PORT))
-    send = {
-        'identify': 'web',
-        'data': data
-    }
-    try:
-        await client_socket.send(json.dumps(send).encode())
-    except Exception as e:
-        print(e)
-    sleep(0.5);
-    client_socket.close()
 
 def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
+
 
 def revoke_token():
     if session.get("token"):
         res = requests.post('https://accounts.google.com/o/oauth2/revoke',
                             params={'token': session['token']},
                             headers={'content-type': 'application/x-www-form-urlencoded'})
+
 
 print("server initialization...")
 
@@ -91,22 +124,37 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+
 @login_manager.unauthorized_handler
 def unauthorized():
     return render_template("signin.html")
+
 
 @login_manager.user_loader
 def load_user(user_id):
     print(user_id)
     return User.get(user_id)
 
+
 @app.route('/noti', methods=['GET'])
 @login_required
-def test():
+def noti_token_get():
     token = request.args.get('token')
     if token != current_user.noti_token:
         current_user.set_noti_token(token)
-    return 'test'
+    usage = current_user.get_lock_usage()
+    # print("noti_token", usage.uuid)
+    if usage:
+        return {"uuid": usage.uuid}
+    return ""
+@app.route('/open', methods=['GET'])
+@login_required
+def open_door():
+    usage = current_user.get_lock_usage()
+    locker = usage.get_locker_info()
+    open_via_raspberry(locker)
+    return "complete"
+
 
 @app.route('/login')
 def login():
@@ -123,11 +171,22 @@ def login():
     )
     return redirect(request_uri)
 
-@app.route('/add_locker')
-def add_locker():
-    data = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
-    socket_send(data)
-    return data[0]
+
+# @app.route('/add_locker')
+# def add_locker():
+#     usage = current_user.get_lock_usage()
+#     if not usage.token:
+#         return render_template("/add_locker.html")
+#     else:
+#         return render_template(
+#             'index.html',
+#             name=current_user.name,
+#             email=current_user.get_departure_name(),
+#             pic=current_user.profile_pic,
+#             path="/",
+#             notis=[]
+#         )
+
 
 @app.route("/login/callback")
 def callback():
@@ -146,6 +205,7 @@ def callback():
         redirect_url=DOMAIN_AUTH,
         code=code,
     )
+
     token_response = requests.post(
         token_url,
         headers=headers,
@@ -200,12 +260,14 @@ def callback():
     # Send user back to homepage
     return redirect('/')
 
+
 @app.route("/msg/<type_id>")
 def msg(type_id):
     if type_id == 'login_error':
         return render_template("message.html", title="오류", message="로그인 중에 오류가 발생하였습니다.")
     elif type_id == 'email_error':
         return render_template("message.html", title="가입 불가", message="해당 이메일은 가천대학교 이메일이 아닙니다.")
+
 
 @app.route("/logout")
 @login_required
@@ -214,41 +276,79 @@ def logout():
 
     return redirect('/')
 
+
 @app.route('/')
-def main():
+def refer():
     print(request.user_agent.string)
     if current_user.is_authenticated:
-        if token:=current_user.noti_token:
-            thread = Thread(target=send_notification, args=(token, "로그인 성공", "로그인에 성공하였습니다.", current_user.profile_pic))
-            thread.start()
-
+        # locker = LockInfo.get("53677848")
+        # open_via_raspberry(locker)
         return render_template(
             'index.html',
             name=current_user.name,
             email=current_user.get_departure_name(),
             pic=current_user.profile_pic,
-            path="main",
+            path="/",
             notis=[]
         )
     return render_template("signin.html")
 
-@app.route('/render/')
+
+@app.route('/render/', methods=['POST'])
 @login_required
 def render_main():
-    return render_template("render/main.html")
+    params = json.loads(request.get_data())
+    print(params)
+    if data:=params.get("data"):
+        if "addLocker_" in data:
+            enable_usage(LockInfo.get(data.split("_")[1]))
+        elif "removeLocker_" in data:
+            usage = LockUsage.get(data.split("_")[1])
+            disable_usage(usage)
+    usage = current_user.get_lock_usage()
+    print(usage)
+    if usage is None:
+        regions = LockRegion.get_by_departure(current_user.dep_id)
 
-@app.route('/render/<path>')
+        lockers_formatted = list()
+        for region in regions:
+            lockers = region.get_lockers()
+            lockers_formatted += [{'name': locker.pos, 'place': region.name, 'own_id': locker.own_id} for locker in lockers if locker.use == 0]
+        print(lockers_formatted)
+        return render_template("render/empty.html", lockers=lockers_formatted)
+    locker = usage.get_locker_info()
+    print(usage)
+    logs = [{"is_open": log.is_open, 'time': log.create_time}
+            for log in usage.get_logs()]
+    if len(logs) == 0:
+        state = LockLog.CLOSED
+    else:
+        state = logs[0]['is_open']
+        print(state)
+    return render_template("render/main.html", lock_name=locker.get_pos_str(), logs=logs[:4], is_open=state, length = len(logs), token=usage.token)
+
+
+@app.route('/render/<path>', methods=['POST'])
 @login_required
 def render_path(path):
+    params = json.loads(request.get_data())
+    print(params)
+    if path=="log":
+        usage = current_user.get_lock_usage()
+        logs = [{"is_open": log.is_open, 'time': log.create_time}
+            for log in usage.get_logs()]
+        return render_template(f"render/log.html", logs=logs)
     try:
-        return render_template(f"render/{path}.html")
+        return render_template(f"render/{path}.html", params=params)
     except Exception as e:
         print(e)
     return render_template("render/404.html")
 
+
 @app.route('/<path>')
 @login_required
 def require_handler(path):
+
     return render_template(
         'index.html',
         name=current_user.name,
@@ -258,10 +358,12 @@ def require_handler(path):
         notis=[]
     )
 
+
 @app.errorhandler(404)
 def page_not_found(error):
     return render_template("message.html", title="오류", message="존재하지 않는 페이지입니다."), 404
 
 
 if __name__ == '__main__':
+    rs_server.listen("server", func=redis_handle)
     app.run(host='0.0.0.0', port=8000)
